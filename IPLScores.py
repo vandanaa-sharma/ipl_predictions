@@ -1,10 +1,14 @@
 import pandas as pd
+import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
-import numpy as np
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression
+
 pd.options.mode.chained_assignment = None
 
 data = pd.read_csv(r'data\IPL Matches 2008-2020.csv') 
@@ -29,7 +33,7 @@ for index, row in df_matches.iterrows():
     else:
         toss_decision = int(100)
 
-    df1 = df.loc[((df['team1'] == t1) | (df['team2'] == t1)) & ((df['team1'] == t2) | (df['team2'] == t2))]
+    df1 = df.copy()
 
     if (df1.empty):
         continue
@@ -46,17 +50,26 @@ for index, row in df_matches.iterrows():
     X = df1.drop(columns=['winner'])
     Y = df1['winner']
 
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.25)
-
-    dt = DecisionTreeClassifier(max_depth=10)
-    dt.fit(X_train, Y_train)
-    score = dt.score(X_test, Y_test)*100
-    accuracy[index] = score
-  
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+    
+    dt = DecisionTreeClassifier()
+    dt.fit(X, Y)
     test_data = le.transform([t1, t2, toss_winner])
     test_data = np.append(test_data, [toss_decision])
-    print(t1, 'vs', t2, "-----|-----", le.inverse_transform(dt.predict([test_data]))[0])
+
+    print(row['Winner'], " | DT ", le.inverse_transform(dt.predict([test_data]))[0])
     result[index] = le.inverse_transform(dt.predict([test_data]))[0]
+
+    rf = RandomForestClassifier()
+    rf.fit(X, Y)
+    print(row['Winner'], " | RF ", le.inverse_transform(rf.predict([test_data]))[0])
+    # result[index] = le.inverse_transform(rf.predict([test_data]))[0]
+
+    dt.fit(X_train, Y_train)
+    accuracy[index] = str(round(dt.score(X_test, Y_test)*100, 2)) + "%"
+
+    rf.fit(X_train, Y_train)
+    print(str(round(rf.score(X_test, Y_test)*100, 2)) + "%")
 
 df_matches['Predicted Winner'] = result
 df_matches['Accuracy'] = accuracy
